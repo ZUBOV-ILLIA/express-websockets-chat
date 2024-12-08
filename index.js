@@ -1,30 +1,47 @@
-const ws = require("ws");
+// index.js
+const express = require("express");
+const http = require("http");
+const WebSocket = require("ws");
 
-const wsServer = new ws.Server({ port: 3010 }, () =>
-  console.log("===== WS Server started =====")
-);
+// Create an instance of an Express app
+const app = express();
+const port = 3000;
 
-wsServer.on("connection", (ws) => {
+// Serve static files from the "public" directory
+app.use(express.static("public"));
+
+// Create an HTTP server
+const server = http.createServer(app);
+
+// Create a WebSocket server
+const wss = new WebSocket.Server({ server });
+
+// Handle WebSocket connections
+wss.on("connection", (ws) => {
+  console.log("A new client connected.");
+
+  // Send a welcome message
+  ws.send("Welcome to the WebSocket server!");
+
+  // Handle incoming messages
   ws.on("message", (message) => {
-    try {
-      parsedMessage = JSON.parse(message);
+    console.log(`Received: ${message}`);
 
-      switch (parsedMessage.event) {
-        case "message":
-          broadcastMessage(parsedMessage);
-          break;
-        case "connection":
-          broadcastMessage(parsedMessage);
-          break;
+    // Broadcast the message to all connected clients
+    wss.clients.forEach((client) => {
+      if (client !== ws && client.readyState === WebSocket.OPEN) {
+        client.send(`Broadcast: ${message}`);
       }
-    } catch (err) {
-      console.log(err);
-    }
+    });
+  });
+
+  // Handle client disconnect
+  ws.on("close", () => {
+    console.log("A client disconnected.");
   });
 });
 
-function broadcastMessage(message) {
-  wsServer.clients.forEach((client) => {
-    client.send(JSON.stringify(message));
-  });
-}
+// Start the server
+server.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
