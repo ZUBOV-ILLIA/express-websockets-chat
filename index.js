@@ -14,28 +14,31 @@ app.use(express.static("public"));
 const server = http.createServer(app);
 
 // Create a WebSocket server
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({ server }, () => {
+  console.log(`ws://express-websockets-chat.onrender.com`);
+});
 
 // Handle WebSocket connections
 wss.on("connection", (ws) => {
-  console.log("A new client connected.");
+  console.log("New client connected <<<<<<<<<<<<<<<<==========");
 
-  // Send a welcome message
-  ws.send("Welcome to the WebSocket server!");
-
-  // Handle incoming messages
   ws.on("message", (message) => {
-    console.log(`Received: ${message}`);
+    try {
+      parsedMessage = JSON.parse(message);
 
-    // Broadcast the message to all connected clients
-    wss.clients.forEach((client) => {
-      if (client !== ws && client.readyState === WebSocket.OPEN) {
-        client.send(`Broadcast: ${message}`);
+      switch (parsedMessage.event) {
+        case "message":
+          broadcastMessage(parsedMessage);
+          break;
+        case "connection":
+          broadcastMessage(parsedMessage);
+          break;
       }
-    });
+    } catch (err) {
+      console.log(err);
+    }
   });
 
-  // Handle client disconnect
   ws.on("close", () => {
     console.log("A client disconnected.");
   });
@@ -45,3 +48,9 @@ wss.on("connection", (ws) => {
 server.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
+
+function broadcastMessage(message) {
+  wss.clients.forEach((client) => {
+    client.send(JSON.stringify(message));
+  });
+}
